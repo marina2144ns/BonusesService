@@ -27,7 +27,7 @@ public class BonusesController {
 
 /*    @PostMapping("/")
     public BonusesResponse searchBonuses(@RequestBody BonusesRequest request) {
-        return bonusesService.searchBonuses(request);
+        return bonusesService.searchBonuses(request); //
     }*/
     @PostMapping("/")
     public ResponseEntity<Object> searchBonuses(@RequestBody BonusesRequest request) {
