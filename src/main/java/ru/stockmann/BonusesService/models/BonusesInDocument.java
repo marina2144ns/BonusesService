@@ -32,6 +32,8 @@ public class BonusesInDocument implements java.io.Serializable{
     private LocalDateTime startDate;
     @Column(name = "BonusEndDate")
     private LocalDateTime endDate;
+    @Column(name = "Document")
+    private Integer document;
 
     public BonusesInDocument() {
     }
@@ -137,4 +139,14 @@ public class BonusesInDocument implements java.io.Serializable{
     public void setEndDate(LocalDateTime endDate) {
         this.endDate = endDate;
     }
+
+    public Integer getDocument() {
+        return document;
+    }
+
+    public void setDocument(Integer document) {
+        this.document = document;
+    }
+
+
 }
