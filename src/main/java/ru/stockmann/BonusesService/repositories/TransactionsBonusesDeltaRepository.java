@@ -1,8 +1,10 @@
 package ru.stockmann.BonusesService.repositories;
 
 import org.springframework.data.jpa.repository.JpaRepository;
+import org.springframework.data.jpa.repository.Modifying;
 import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
+import org.springframework.transaction.annotation.Transactional;
 import ru.stockmann.BonusesService.models.BonusesInDocument;
 import ru.stockmann.BonusesService.repositories.projections.DocumentVersionRow;
 
@@ -14,14 +16,20 @@ public interface TransactionsBonusesDeltaRepository extends JpaRepository<Bonuse
         SELECT
             d.Id AS id,
             d.CurrentVersion AS currentVersion,
-            COUNT_BIG(b.Id) AS rowsCount
-        FROM Documents d
-        JOIN BonusesInDocuments b
-            ON b.Document = d.Id
+            bc.RowsCount AS rowsCount
+        FROM dbo.Documents d
+        CROSS APPLY (
+            SELECT COUNT_BIG(*) AS RowsCount
+            FROM dbo.BonusesInDocuments b
+            WHERE b.Document = d.Id
+        ) bc
         WHERE d.CurrentVersion > :cursor
-        GROUP BY
-            d.Id,
-            d.CurrentVersion
+          AND bc.RowsCount > 0
+          AND NOT EXISTS (
+              SELECT 1
+              FROM dbo.SMS_informed si
+              WHERE si.Document = d.Id
+          )
         ORDER BY d.CurrentVersion ASC
         OFFSET 0 ROWS FETCH NEXT :fetchLimit ROWS ONLY
         """, nativeQuery = true)
@@ -30,6 +38,25 @@ public interface TransactionsBonusesDeltaRepository extends JpaRepository<Bonuse
             @Param("fetchLimit") Integer fetchLimit
     );
 
-
-
+    @Modifying
+    @Transactional
+    @Query(value = """
+        INSERT INTO SMS_informed (Document, CurrentVersion, EventsCount, InformedAt)
+        SELECT
+            d.Id,
+            d.CurrentVersion,
+            :eventsCount,
+            SYSDATETIME()
+        FROM Documents d
+        WHERE d.Id = :documentId
+          AND NOT EXISTS (
+              SELECT 1
+              FROM SMS_informed si
+              WHERE si.Document = d.Id
+          )
+        """, nativeQuery = true)
+    void markDocumentAsInformed(
+            @Param("documentId") Integer documentId,
+            @Param("eventsCount") Long eventsCount
+    );
 }
