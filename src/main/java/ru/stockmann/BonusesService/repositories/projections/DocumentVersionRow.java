@@ -5,4 +5,6 @@ public interface DocumentVersionRow {
     Integer getId();
 
     Long getCurrentVersion();
+
+    Long getRowsCount();
 }
