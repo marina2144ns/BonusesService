@@ -6,6 +6,8 @@ import org.springframework.data.jpa.repository.Query;
 import org.springframework.data.repository.query.Param;
 import org.springframework.transaction.annotation.Transactional;
 import ru.stockmann.BonusesService.models.BonusesInDocument;
+import ru.stockmann.BonusesService.repositories.projections.DocumentCandidateRow;
+import ru.stockmann.BonusesService.repositories.projections.DocumentEventsCountRow;
 import ru.stockmann.BonusesService.repositories.projections.DocumentVersionRow;
 
 import java.util.List;
@@ -58,5 +60,35 @@ public interface TransactionsBonusesDeltaRepository extends JpaRepository<Bonuse
     void markDocumentAsInformed(
             @Param("documentId") Integer documentId,
             @Param("eventsCount") Long eventsCount
+    );
+
+    @Query(value = """
+    SELECT TOP (:fetchLimit)
+        d.Id AS id,
+        d.CurrentVersion AS currentVersion
+    FROM dbo.Documents d
+    LEFT JOIN dbo.SMS_informed si
+        ON si.Document = d.Id
+    WHERE d.CurrentVersion > :cursor
+      AND si.Document IS NULL
+    ORDER BY
+        d.CurrentVersion ASC,
+        d.Id ASC
+    """, nativeQuery = true)
+    List<DocumentCandidateRow> findDocumentCandidates(
+            @Param("cursor") Long cursor,
+            @Param("fetchLimit") Integer fetchLimit
+    );
+
+    @Query(value = """
+        SELECT
+            b.Document AS id,
+            COUNT_BIG(*) AS rowsCount
+        FROM dbo.BonusesInDocuments b
+        WHERE b.Document IN (:documentIds)
+        GROUP BY b.Document
+        """, nativeQuery = true)
+    List<DocumentEventsCountRow> countEventsByDocumentIds(
+            @Param("documentIds") List<Integer> documentIds
     );
 }

@@ -1,9 +1,10 @@
 package ru.stockmann.BonusesService.controllers;
 
 import org.springframework.beans.factory.annotation.Autowired;
+import org.springframework.http.MediaType;
 import org.springframework.http.ResponseEntity;
 import org.springframework.web.bind.annotation.*;
-import ru.stockmann.BonusesService.models.api.delta.TransactionsBonusesDeltaResponse;
+import org.springframework.web.servlet.mvc.method.annotation.StreamingResponseBody;
 import ru.stockmann.BonusesService.services.TransactionsBonusesDeltaService;
 
 @RestController
@@ -13,24 +14,34 @@ public class TransactionsBonusesController {
     @Autowired
     private TransactionsBonusesDeltaService deltaService;
 
-    @GetMapping("/delta")
-    public ResponseEntity<Object> getDelta(
-            @RequestParam(name = "cursor", required = false, defaultValue = "0") String cursor,
-            @RequestParam(name = "limit", required = false, defaultValue = "500") Integer limit
+    @GetMapping(
+            value = "/delta",
+            produces = MediaType.APPLICATION_JSON_VALUE
+    )
+    public ResponseEntity<StreamingResponseBody> getDelta(
+            @RequestParam(
+                    name = "cursor",
+                    required = false,
+                    defaultValue = "0"
+            ) String cursor,
+            @RequestParam(
+                    name = "limit",
+                    required = false,
+                    defaultValue = "500"
+            ) Integer limit
     ) {
-        try {
-            validateInputParameters(cursor, limit);
+        validateInputParameters(cursor, limit);
 
-            TransactionsBonusesDeltaResponse response = deltaService.getDelta(cursor, limit);
+        StreamingResponseBody responseBody = outputStream ->
+                deltaService.writeDelta(
+                        cursor,
+                        limit,
+                        outputStream
+                );
 
-            return ResponseEntity.ok(new SuccessResponse(true, response));
-
-        } catch (RuntimeException ex) {
-            return ResponseEntity.ok(new ErrorResponse(false, 500, ex.getMessage()));
-
-        } catch (Exception ex) {
-            return ResponseEntity.ok(new ErrorResponse(false, 500, ex.getMessage()));
-        }
+        return ResponseEntity.ok()
+                .contentType(MediaType.APPLICATION_JSON)
+                .body(responseBody);
     }
 
     private void validateInputParameters(String cursor, Integer limit) {
