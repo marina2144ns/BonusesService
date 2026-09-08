@@ -507,6 +507,7 @@ public class TransactionsBonusesDeltaService {
 
         String sql = """
                 SELECT
+                    phoneData.Phone,
                     b.CardNumber,
                     b.TypeOfIncrement,
                     b.Value,
@@ -543,6 +544,17 @@ public class TransactionsBonusesDeltaService {
                     ON d.Id = b.Document
                 JOIN dbo.DocumentTypes dt
                     ON dt.Id = d.DocumentType
+                OUTER APPLY (
+                    SELECT TOP (1)
+                        pp.Phone
+                    FROM dbo.InformationCards ic
+                    JOIN dbo.PersonPhones pp
+                        ON pp.PersonId = ic.PersonId
+                    WHERE ic.CardCode = b.CardNumber
+                    ORDER BY
+                        ic.Id ASC,
+                        pp.Id ASC
+                ) phoneData
                 WHERE b.Document IN (%s)
                 ORDER BY
                     d.CurrentVersion ASC,
@@ -581,7 +593,9 @@ public class TransactionsBonusesDeltaService {
                         try {
                             TransactionBonusEvent event =
                                     new TransactionBonusEvent(
-                                            null,
+                                            resultSet.getString(
+                                                    "Phone"
+                                            ),
                                             resultSet.getString(
                                                     "CardNumber"
                                             ),
